@@ -7,5 +7,7 @@ venv/
 node_modules/
 frontend/dist/
 backend/uploads/
+backend/*.zip
+*.zip
 frontend/tsconfig.tsbuildinfo
 .cursor/
