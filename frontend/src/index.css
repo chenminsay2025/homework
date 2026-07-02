@@ -1,0 +1,486 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 字号规范（手机端）：
+   - 正文 text-base = 16px
+   - 辅助/标签 text-sm、text-xs = 14px（最小可读，见 tailwind.config.js）
+   - 不使用 10px / 12px
+   平板/桌面：≥768px 左侧导航 + 内容区 max-w-6xl；弹窗居中显示 */
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: auto;
+}
+
+body {
+  @apply bg-slate-100 text-base text-slate-800 antialiased;
+  min-height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.app-shell {
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 35;
+  width: 4.5rem;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 768px) {
+  .app-sidebar {
+    width: 9.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar {
+    width: 13rem;
+  }
+}
+
+.app-page {
+  @apply mx-auto w-full max-w-6xl;
+}
+
+.app-header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.card {
+  @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+}
+
+.btn {
+  @apply inline-flex min-h-[2.75rem] items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium transition active:scale-[0.98];
+}
+
+.btn-primary {
+  @apply btn bg-indigo-600 text-white active:bg-indigo-700;
+}
+
+.btn-secondary {
+  @apply btn border border-slate-200 bg-white text-slate-700 active:bg-slate-50;
+}
+
+.btn-ghost {
+  @apply btn bg-transparent text-slate-600 active:bg-slate-100;
+}
+
+.input {
+  @apply w-full min-h-[2.75rem] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
+.sheet-backdrop {
+  @apply fixed inset-0 z-50 flex flex-col justify-end bg-black/40;
+  overscroll-behavior: none;
+}
+
+@media (min-width: 768px) {
+  .sheet-backdrop {
+    @apply items-center justify-center p-6;
+  }
+}
+
+.sheet {
+  @apply max-h-[92dvh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 768px) {
+  .sheet {
+    @apply max-h-[85dvh] max-w-lg rounded-3xl;
+  }
+}
+
+.preview-native {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.preview-native > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.preview-native iframe,
+.preview-native embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 预览弹窗：禁止整页手势缩放，由 PinchPanViewer 在预览区内处理 */
+.preview-open,
+.preview-open body {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.preview-open .preview-native,
+.preview-open .sheet-backdrop,
+.preview-open .sheet {
+  touch-action: none;
+}
+
+/* 移动端 canvas PDF：取消内部滚动，统一由 PinchPanViewer 拖动/缩放 */
+.canvas-pdf-preview .vue-office-pdf {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
+  position: static !important;
+  text-align: center;
+}
+
+.sheet-scroll {
+  @apply max-h-[92dvh] overflow-y-auto overscroll-y-contain px-5 pt-5;
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+/* 圆角容器内滚动：滚动条不超出圆角 */
+.scroll-inset {
+  @apply overflow-hidden;
+}
+
+.scroll-inset-y {
+  @apply overflow-y-auto overscroll-y-auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-inset-x {
+  @apply overflow-x-auto overscroll-x-auto;
+  min-width: 0;
+  scrollbar-gutter: stable;
+}
+
+.scroll-inset-y::-webkit-scrollbar,
+.scroll-inset-x::-webkit-scrollbar,
+.sheet-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scroll-inset-y::-webkit-scrollbar-thumb,
+.scroll-inset-x::-webkit-scrollbar-thumb,
+.sheet-scroll::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300/80;
+}
+
+.scroll-inset-y::-webkit-scrollbar-track,
+.scroll-inset-x::-webkit-scrollbar-track,
+.sheet-scroll::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.sheet-handle {
+  @apply mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200;
+}
+
+@media (min-width: 768px) {
+  .sheet-handle {
+    display: none;
+  }
+}
+
+/* 底部操作菜单（长按 / 快捷操作） */
+.action-sheet {
+  @apply w-full overflow-hidden rounded-t-3xl bg-white px-4 pt-3 shadow-2xl;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.action-sheet .sheet-handle {
+  @apply mb-3 bg-slate-200;
+}
+
+.action-sheet-title {
+  @apply px-2 pb-3 text-center text-sm font-medium text-slate-500;
+}
+
+.action-sheet-subtitle {
+  @apply mt-0.5 text-xs font-normal text-slate-400;
+}
+
+.action-sheet-group {
+  @apply overflow-hidden rounded-2xl border border-slate-200 bg-white;
+}
+
+.action-sheet-item {
+  @apply block w-full border-b border-slate-100 py-3.5 text-center text-base font-medium transition active:bg-slate-50;
+}
+
+.action-sheet-item:last-child {
+  @apply border-b-0;
+}
+
+.action-sheet-cancel {
+  @apply mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white;
+}
+
+.action-sheet-cancel .action-sheet-item {
+  @apply py-3.5 font-semibold text-slate-700;
+}
+
+.docx-preview-wrapper {
+  @apply bg-white text-slate-800;
+}
+
+.docx-preview-wrapper section.docx {
+  @apply mx-auto max-w-full;
+}
+
+.preview-docx,
+.preview-docx .docx-preview-wrapper {
+  @apply select-text;
+}
+
+.preview-xlsx {
+  @apply select-text;
+}
+
+.office-preview-host .docx-preview-wrapper {
+  @apply bg-white text-slate-800;
+}
+
+.office-preview-host .docx-preview-wrapper section.docx {
+  @apply mx-auto max-w-full;
+}
+
+.pdf-page {
+  position: relative;
+}
+
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.pdf-text-layer span,
+.pdf-text-layer br {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.fab {
+  @apply fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-2xl text-white shadow-lg active:scale-95;
+}
+
+@media (min-width: 768px) {
+  .fab {
+    bottom: 1.5rem;
+  }
+}
+
+/* 周课表横屏全屏：竖屏时旋转 90°，利用长边显示完整表格 */
+.landscape-schedule-shell {
+  @apply fixed inset-0 z-[80];
+  background: linear-gradient(145deg, #eef2ff 0%, #f1f5f9 50%, #f8fafc 100%);
+}
+
+.landscape-schedule-rotated {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
+}
+
+.landscape-schedule-header {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 55%, #818cf8 100%);
+  box-shadow: 0 4px 20px rgb(79 70 229 / 0.25);
+}
+
+.landscape-schedule-icon {
+  display: inline-flex;
+  animation: landscapeIconBob 2.5s ease-in-out infinite;
+}
+
+@keyframes landscapeIconBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.landscape-schedule-panel {
+  animation: landscapePanelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes landscapePanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.landscape-schedule-table .landscape-grid-row {
+  animation: landscapeRowIn 0.4s ease-out backwards;
+}
+
+@keyframes landscapeRowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.schedule-grid-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: auto;
+  min-width: 0;
+  padding: 0 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-grid-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.schedule-grid-outer {
+  min-width: 100%;
+  width: max-content;
+}
+
+.schedule-grid {
+  display: grid;
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  grid-auto-flow: row;
+}
+
+.schedule-grid-compact {
+  grid-template-columns: 4.75rem repeat(7, minmax(3.25rem, 1fr));
+}
+
+@media (min-width: 768px) {
+  .schedule-grid-compact {
+    grid-template-columns: 5.5rem repeat(7, minmax(4.25rem, 1fr));
+  }
+
+  .schedule-grid-expanded {
+    grid-template-columns: 6rem repeat(7, minmax(5.5rem, 1fr));
+  }
+}
+
+.schedule-grid-expanded {
+  grid-template-columns: 5.25rem repeat(7, minmax(4.5rem, 1fr));
+}
+
+.schedule-grid-cell {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  border-right: 1px solid rgb(226 232 240);
+  border-bottom: 1px solid rgb(226 232 240);
+  background: rgb(255 255 255);
+}
+
+.schedule-grid-head {
+  padding: 0.5rem 0.125rem;
+  white-space: nowrap;
+}
+
+.schedule-grid-time {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0.375rem 0.25rem;
+  background: rgb(255 255 255);
+  overflow: hidden;
+}
+
+.schedule-grid-compact .schedule-grid-time {
+  min-width: 4.75rem;
+  max-width: 4.75rem;
+}
+
+.schedule-grid-expanded .schedule-grid-time {
+  min-width: 5.25rem;
+  max-width: 5.25rem;
+}
+
+.schedule-grid-day-last {
+  border-right: none;
+}
+
+.schedule-grid-today-cell {
+  background: #eef2ff;
+}
+
+.schedule-grid-today-head {
+  background: #e0e7ff;
+}
+
+.schedule-list-today-body > [data-swipe-row] + [data-swipe-row] {
+  border-top: 1px solid #c7d2fe;
+}
+
+.landscape-schedule-close {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.landscape-schedule-close:active {
+  transform: scale(0.96);
+}

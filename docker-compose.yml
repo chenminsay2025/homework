@@ -1,0 +1,22 @@
+# 本地开发 / 自建服务器：docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: homework-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: homework
+      POSTGRES_PASSWORD: homework
+      POSTGRES_DB: homework
+    ports:
+      - "5432:5432"
+    volumes:
+      - homework_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homework -d homework"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  homework_pg_data:
