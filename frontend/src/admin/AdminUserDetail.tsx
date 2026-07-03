@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
+import { useAuth } from "../context/AuthContext";
 import type { AdminUserDetail } from "../types";
+import AdminAccountSecurity from "./AdminAccountSecurity";
+import AdminUserUsagePanel from "./AdminUserUsagePanel";
 
 export default function AdminUserDetailPage() {
   const { userId } = useParams<{ userId: string }>();
+  const { user: currentUser } = useAuth();
   const id = Number(userId);
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,12 +35,17 @@ export default function AdminUserDetailPage() {
   if (error) return <div className="text-red-500">{error}</div>;
   if (!user) return <div className="text-slate-500">用户不存在</div>;
 
+  const isSelf = currentUser?.id === user.id;
+
   return (
     <div>
       <Link to="/admin/users" className="text-sm text-indigo-600 hover:underline">
         ← 返回用户列表
       </Link>
-      <h2 className="mt-3 text-xl font-bold text-slate-800">用户数据</h2>
+      <h2 className="mt-3 text-xl font-bold text-slate-800">
+        {isSelf ? "我的账号" : "用户详情"}
+      </h2>
+
       <div className="card mt-4 p-5">
         <dl className="grid grid-cols-4 gap-4 text-sm">
           <div>
@@ -68,6 +77,10 @@ export default function AdminUserDetailPage() {
         </dl>
       </div>
 
+      <AdminUserUsagePanel usage={user.usage} />
+
+      <AdminAccountSecurity user={user} isSelf={isSelf} onUpdated={load} />
+
       <h3 className="mt-6 text-lg font-semibold text-slate-800">该用户的计划</h3>
       {user.plans.length === 0 ? (
         <p className="mt-3 text-slate-500">暂无计划</p>
@@ -81,6 +94,7 @@ export default function AdminUserDetailPage() {
                 <th className="p-3">描述</th>
                 <th className="p-3">时段</th>
                 <th className="p-3">任务</th>
+                <th className="p-3">状态</th>
                 <th className="p-3">操作</th>
               </tr>
             </thead>
@@ -92,6 +106,11 @@ export default function AdminUserDetailPage() {
                   <td className="p-3 text-slate-600">{p.description || "—"}</td>
                   <td className="p-3">{p.slot_count}</td>
                   <td className="p-3">{p.task_count}</td>
+                  <td className="p-3">
+                    <span className={p.is_active ? "text-green-600" : "text-slate-400"}>
+                      {p.is_active ? "启用" : "停用"}
+                    </span>
+                  </td>
                   <td className="p-3">
                     <Link to={`/admin/plans/${p.id}`} className="text-indigo-600 hover:underline">
                       查看详情

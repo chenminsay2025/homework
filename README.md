@@ -50,3 +50,5 @@ JWT_SECRET=请改为随机长字符串
 - 长期任务、多附件上传与在线预览
 - 运营后台：用户/计划管理、上传大小设置
 - REST API，可供 iOS / Android 原生 App 接入
+
+**Android APK：** 见 [deploy/Android-APK打包说明.md](./deploy/Android-APK打包说明.md)，运行 `scripts\build-apk.bat`。

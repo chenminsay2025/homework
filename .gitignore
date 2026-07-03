@@ -6,6 +6,11 @@ __pycache__/
 venv/
 node_modules/
 frontend/dist/
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
+frontend/.env.mobile
 backend/uploads/
 backend/*.zip
 *.zip

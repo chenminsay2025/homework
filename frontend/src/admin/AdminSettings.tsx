@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useAuth } from "../context/AuthContext";
 import type { AdminSettings } from "../types";
+import AdminAccountSecurity from "./AdminAccountSecurity";
 
 export default function AdminSettingsPage() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [maxMb, setMaxMb] = useState(100);
   const [retentionDays, setRetentionDays] = useState(15);
@@ -36,14 +40,36 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (!settings) return <div className="text-slate-500">加载中...</div>;
+  if (!settings || !user) return <div className="text-slate-500">加载中...</div>;
 
   return (
     <div className="max-w-xl">
       <h2 className="text-xl font-bold text-slate-800">系统设置</h2>
       <p className="mt-1 text-sm text-slate-500">配置全局参数，修改后立即对用户端生效。</p>
 
-      <div className="card mt-6 space-y-4 p-5">
+      <div id="admin-account" className="mt-6">
+        <AdminAccountSecurity
+          user={{
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name,
+            role: user.role ?? "admin",
+            is_active: user.is_active ?? true,
+          }}
+          isSelf
+        />
+        <p className="mt-2 text-xs text-slate-400">
+          也可在
+          <Link to={`/admin/users/${user.id}`} className="mx-1 text-indigo-600 hover:underline">
+            用户详情
+          </Link>
+          中管理本账号。
+        </p>
+      </div>
+
+      <h2 className="mt-8 text-xl font-bold text-slate-800">全局参数</h2>
+
+      <div className="card mt-4 space-y-4 p-5">
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">附件上传大小限制（MB）</label>
           <input

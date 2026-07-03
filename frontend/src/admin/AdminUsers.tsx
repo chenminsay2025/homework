@@ -55,7 +55,7 @@ export default function AdminUsers() {
                 </td>
                 <td className="p-3 space-x-3">
                   <Link to={`/admin/users/${u.id}`} className="text-indigo-600 hover:underline">
-                    查看数据
+                    详情 / 账号安全
                   </Link>
                   {u.role !== "admin" && (
                     <button type="button" className="text-slate-600" onClick={() => toggleActive(u)}>

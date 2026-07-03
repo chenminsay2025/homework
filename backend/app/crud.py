@@ -2042,6 +2042,18 @@ def change_password(db: Session, user: models.User, data: schemas.PasswordChange
     db.commit()
 
 
+def admin_reset_user_password(db: Session, user_id: int, new_password: str) -> models.User | None:
+    from .security import hash_password
+
+    user = db.get(models.User, user_id)
+    if not user:
+        return None
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def admin_stats(db: Session) -> schemas.AdminStatsOut:
     return schemas.AdminStatsOut(
         user_count=db.query(models.User).count(),
@@ -2169,6 +2181,254 @@ def admin_purge_deleted_record(db: Session, record_id: int) -> bool:
     return permanent_delete_record(db, record_id)
 
 
+def _count_by_plan(db: Session, model, plan_ids: list[int], *, extra_filter=None) -> dict[int, int]:
+    if not plan_ids:
+        return {}
+    q = db.query(model.plan_id, func.count()).filter(model.plan_id.in_(plan_ids))
+    if extra_filter is not None:
+        q = q.filter(extra_filter)
+    return {pid: cnt for pid, cnt in q.group_by(model.plan_id).all()}
+
+
+def _count_by_plan_via_task(db: Session, plan_ids: list[int], *, extra_filter=None) -> dict[int, int]:
+    if not plan_ids:
+        return {}
+    q = (
+        db.query(models.Task.plan_id, func.count())
+        .join(models.DailyEntry, models.DailyEntry.task_id == models.Task.id)
+        .filter(models.Task.plan_id.in_(plan_ids))
+    )
+    if extra_filter is not None:
+        q = q.filter(extra_filter)
+    return {pid: cnt for pid, cnt in q.group_by(models.Task.plan_id).all()}
+
+
+def _count_by_plan_via_slot(db: Session, plan_ids: list[int], *, extra_filter=None) -> dict[int, int]:
+    if not plan_ids:
+        return {}
+    q = (
+        db.query(models.ScheduleSlot.plan_id, func.count())
+        .join(models.SlotDailyPlan, models.SlotDailyPlan.slot_id == models.ScheduleSlot.id)
+        .filter(models.ScheduleSlot.plan_id.in_(plan_ids))
+    )
+    if extra_filter is not None:
+        q = q.filter(extra_filter)
+    return {pid: cnt for pid, cnt in q.group_by(models.ScheduleSlot.plan_id).all()}
+
+
+def _attachment_stats_by_plan(db: Session, plan_ids: list[int]) -> dict[int, tuple[int, int]]:
+    if not plan_ids:
+        return {}
+    result: dict[int, tuple[int, int]] = {pid: (0, 0) for pid in plan_ids}
+    for pid, cnt, total in (
+        db.query(
+            models.PlanAttachment.plan_id,
+            func.count(),
+            func.coalesce(func.sum(models.PlanAttachment.file_size), 0),
+        )
+        .filter(models.PlanAttachment.plan_id.in_(plan_ids))
+        .group_by(models.PlanAttachment.plan_id)
+        .all()
+    ):
+        result[pid] = (result[pid][0] + int(cnt), result[pid][1] + int(total))
+    for pid, cnt, total in (
+        db.query(
+            models.Task.plan_id,
+            func.count(),
+            func.coalesce(func.sum(models.TaskAttachment.file_size), 0),
+        )
+        .join(models.TaskAttachment, models.TaskAttachment.task_id == models.Task.id)
+        .filter(models.Task.plan_id.in_(plan_ids))
+        .group_by(models.Task.plan_id)
+        .all()
+    ):
+        c, b = result.get(pid, (0, 0))
+        result[pid] = (c + int(cnt), b + int(total))
+    return result
+
+
+def _last_activity_by_plan(db: Session, plan_ids: list[int]) -> dict[int, datetime]:
+    if not plan_ids:
+        return {}
+    result: dict[int, datetime | None] = {pid: None for pid in plan_ids}
+
+    def _merge(rows: list[tuple[int, datetime | None]]) -> None:
+        for pid, ts in rows:
+            if ts is None:
+                continue
+            prev = result.get(pid)
+            if prev is None or ts > prev:
+                result[pid] = ts
+
+    _merge(
+        db.query(models.Plan.id, models.Plan.created_at)
+        .filter(models.Plan.id.in_(plan_ids))
+        .all()
+    )
+    _merge(
+        db.query(models.Task.plan_id, func.max(models.DailyEntry.created_at))
+        .join(models.DailyEntry, models.DailyEntry.task_id == models.Task.id)
+        .filter(models.Task.plan_id.in_(plan_ids))
+        .group_by(models.Task.plan_id)
+        .all()
+    )
+    _merge(
+        db.query(models.ScheduleSlot.plan_id, func.max(models.SlotDailyPlan.created_at))
+        .join(models.SlotDailyPlan, models.SlotDailyPlan.slot_id == models.ScheduleSlot.id)
+        .filter(models.ScheduleSlot.plan_id.in_(plan_ids))
+        .group_by(models.ScheduleSlot.plan_id)
+        .all()
+    )
+    _merge(
+        db.query(models.DayManualItem.plan_id, func.max(models.DayManualItem.created_at))
+        .filter(models.DayManualItem.plan_id.in_(plan_ids))
+        .group_by(models.DayManualItem.plan_id)
+        .all()
+    )
+    return {pid: ts for pid, ts in result.items() if ts is not None}
+
+
+def admin_user_usage_stats(db: Session, user_id: int) -> schemas.AdminUserUsageOut:
+    user = db.get(models.User, user_id)
+    if not user:
+        return schemas.AdminUserUsageOut()
+
+    plans = (
+        db.query(models.Plan)
+        .filter_by(user_id=user_id)
+        .order_by(models.Plan.created_at.desc())
+        .all()
+    )
+    plan_ids = [p.id for p in plans]
+    registered_days = max(0, (datetime.now() - user.created_at).days)
+
+    if not plan_ids:
+        return schemas.AdminUserUsageOut(registered_days=registered_days)
+
+    courses = _count_by_plan(db, models.Course, plan_ids)
+    locations = _count_by_plan(db, models.Location, plan_ids)
+    slots = _count_by_plan(db, models.ScheduleSlot, plan_ids)
+    tasks = _count_by_plan(db, models.Task, plan_ids)
+    active_tasks = _count_by_plan(db, models.Task, plan_ids, extra_filter=models.Task.is_active.is_(True))
+    daily_entries = _count_by_plan_via_task(db, plan_ids)
+    daily_completed = _count_by_plan_via_task(
+        db, plan_ids, extra_filter=models.DailyEntry.status == "completed"
+    )
+    slot_plans = _count_by_plan_via_slot(db, plan_ids)
+    slot_completed = _count_by_plan_via_slot(
+        db, plan_ids, extra_filter=models.SlotDailyPlan.status == "completed"
+    )
+    manual_items = _count_by_plan(db, models.DayManualItem, plan_ids)
+    manual_completed = _count_by_plan(
+        db, models.DayManualItem, plan_ids, extra_filter=models.DayManualItem.status == "completed"
+    )
+    exceptions = _count_by_plan(db, models.ScheduleException, plan_ids)
+    attachments = _attachment_stats_by_plan(db, plan_ids)
+    last_activity_map = _last_activity_by_plan(db, plan_ids)
+
+    deleted_count = (
+        db.query(func.count())
+        .select_from(models.DeletedRecord)
+        .filter(
+            models.DeletedRecord.user_id == user_id,
+            models.DeletedRecord.restored_at.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+
+    plan_usages: list[schemas.AdminUserPlanUsageOut] = []
+    totals = {
+        "course": 0,
+        "location": 0,
+        "slot": 0,
+        "task": 0,
+        "active_task": 0,
+        "daily": 0,
+        "daily_done": 0,
+        "slot_plan": 0,
+        "slot_done": 0,
+        "manual": 0,
+        "manual_done": 0,
+        "attach": 0,
+        "attach_bytes": 0,
+        "exception": 0,
+    }
+
+    for plan in plans:
+        pid = plan.id
+        attach_cnt, attach_bytes = attachments.get(pid, (0, 0))
+        usage = schemas.AdminUserPlanUsageOut(
+            plan_id=pid,
+            plan_name=plan.name,
+            is_active=plan.is_active,
+            created_at=plan.created_at,
+            course_count=courses.get(pid, 0),
+            location_count=locations.get(pid, 0),
+            schedule_slot_count=slots.get(pid, 0),
+            task_count=tasks.get(pid, 0),
+            active_task_count=active_tasks.get(pid, 0),
+            daily_entry_count=daily_entries.get(pid, 0),
+            daily_entry_completed=daily_completed.get(pid, 0),
+            slot_daily_plan_count=slot_plans.get(pid, 0),
+            slot_daily_plan_completed=slot_completed.get(pid, 0),
+            day_manual_item_count=manual_items.get(pid, 0),
+            day_manual_item_completed=manual_completed.get(pid, 0),
+            attachment_count=attach_cnt,
+            attachment_bytes=attach_bytes,
+            schedule_exception_count=exceptions.get(pid, 0),
+            last_activity_at=last_activity_map.get(pid),
+        )
+        plan_usages.append(usage)
+        totals["course"] += usage.course_count
+        totals["location"] += usage.location_count
+        totals["slot"] += usage.schedule_slot_count
+        totals["task"] += usage.task_count
+        totals["active_task"] += usage.active_task_count
+        totals["daily"] += usage.daily_entry_count
+        totals["daily_done"] += usage.daily_entry_completed
+        totals["slot_plan"] += usage.slot_daily_plan_count
+        totals["slot_done"] += usage.slot_daily_plan_completed
+        totals["manual"] += usage.day_manual_item_count
+        totals["manual_done"] += usage.day_manual_item_completed
+        totals["attach"] += usage.attachment_count
+        totals["attach_bytes"] += usage.attachment_bytes
+        totals["exception"] += usage.schedule_exception_count
+
+    trackable = totals["daily"] + totals["slot_plan"] + totals["manual"]
+    completed = totals["daily_done"] + totals["slot_done"] + totals["manual_done"]
+    completion_rate = round(completed / trackable, 3) if trackable > 0 else 0.0
+
+    last_activity = max(
+        (u.last_activity_at for u in plan_usages if u.last_activity_at),
+        default=None,
+    )
+
+    return schemas.AdminUserUsageOut(
+        registered_days=registered_days,
+        last_activity_at=last_activity,
+        active_plan_count=sum(1 for p in plans if p.is_active),
+        total_plan_count=len(plans),
+        course_count=totals["course"],
+        location_count=totals["location"],
+        schedule_slot_count=totals["slot"],
+        task_count=totals["task"],
+        active_task_count=totals["active_task"],
+        daily_entry_count=totals["daily"],
+        daily_entry_completed=totals["daily_done"],
+        slot_daily_plan_count=totals["slot_plan"],
+        slot_daily_plan_completed=totals["slot_done"],
+        day_manual_item_count=totals["manual"],
+        day_manual_item_completed=totals["manual_done"],
+        attachment_count=totals["attach"],
+        attachment_bytes=totals["attach_bytes"],
+        schedule_exception_count=totals["exception"],
+        deleted_record_count=int(deleted_count),
+        completion_rate=completion_rate,
+        plan_usages=plan_usages,
+    )
+
+
 def admin_get_user(db: Session, user_id: int) -> schemas.AdminUserDetailOut | None:
     user = db.get(models.User, user_id)
     if not user:
@@ -2184,6 +2444,7 @@ def admin_get_user(db: Session, user_id: int) -> schemas.AdminUserDetailOut | No
         created_at=user.created_at,
         plan_count=plan_count,
         plans=plans,
+        usage=admin_user_usage_stats(db, user_id),
     )
 
 

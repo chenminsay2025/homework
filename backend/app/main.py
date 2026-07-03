@@ -160,6 +160,19 @@ def admin_update_user(
     return result
 
 
+@app.post("/api/admin/users/{user_id}/reset-password")
+def admin_reset_user_password(
+    user_id: int,
+    data: schemas.AdminPasswordReset,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_admin),
+):
+    user = crud.admin_reset_user_password(db, user_id, data.new_password)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return {"ok": True}
+
+
 @app.get("/api/admin/users/{user_id}", response_model=schemas.AdminUserDetailOut)
 def admin_get_user(
     user_id: int,

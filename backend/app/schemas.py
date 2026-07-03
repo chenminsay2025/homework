@@ -48,7 +48,11 @@ class AdminUserOut(UserOut):
 class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     role: Literal["user", "admin"] | None = None
-    display_name: str | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+class AdminPasswordReset(BaseModel):
+    new_password: str = Field(min_length=6, max_length=100)
 
 
 class AdminStatsOut(BaseModel):
@@ -78,6 +82,53 @@ class AdminPlanUserBrief(BaseModel):
 
 class AdminUserDetailOut(AdminUserOut):
     plans: list["PlanOut"] = []
+    usage: "AdminUserUsageOut" = Field(default_factory=lambda: AdminUserUsageOut())
+
+
+class AdminUserPlanUsageOut(BaseModel):
+    plan_id: int
+    plan_name: str
+    is_active: bool
+    created_at: datetime
+    course_count: int = 0
+    location_count: int = 0
+    schedule_slot_count: int = 0
+    task_count: int = 0
+    active_task_count: int = 0
+    daily_entry_count: int = 0
+    daily_entry_completed: int = 0
+    slot_daily_plan_count: int = 0
+    slot_daily_plan_completed: int = 0
+    day_manual_item_count: int = 0
+    day_manual_item_completed: int = 0
+    attachment_count: int = 0
+    attachment_bytes: int = 0
+    schedule_exception_count: int = 0
+    last_activity_at: datetime | None = None
+
+
+class AdminUserUsageOut(BaseModel):
+    registered_days: int = 0
+    last_activity_at: datetime | None = None
+    active_plan_count: int = 0
+    total_plan_count: int = 0
+    course_count: int = 0
+    location_count: int = 0
+    schedule_slot_count: int = 0
+    task_count: int = 0
+    active_task_count: int = 0
+    daily_entry_count: int = 0
+    daily_entry_completed: int = 0
+    slot_daily_plan_count: int = 0
+    slot_daily_plan_completed: int = 0
+    day_manual_item_count: int = 0
+    day_manual_item_completed: int = 0
+    attachment_count: int = 0
+    attachment_bytes: int = 0
+    schedule_exception_count: int = 0
+    deleted_record_count: int = 0
+    completion_rate: float = 0.0
+    plan_usages: list[AdminUserPlanUsageOut] = []
 
 
 class AdminPlanDetailOut(BaseModel):

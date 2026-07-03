@@ -11,7 +11,6 @@ const ACTION_WIDTH = 128;
 const LONG_PRESS_MS = 500;
 
 const WEEKDAY_SHORT = ["一", "二", "三", "四", "五", "六", "日"];
-const GRID_BORDER = "border-slate-200";
 
 export function getTodayWeekday(): number {
   const d = new Date().getDay();
@@ -25,15 +24,17 @@ function timeKey(slot: ScheduleSlot): string {
 
 function RowTimeLabel({ rowKey, large = false }: { rowKey: string; large?: boolean }) {
   if (rowKey === "all_day") {
-    return <span className={`whitespace-nowrap ${large ? "text-sm" : "text-[12px]"}`}>全天</span>;
+    return <span className={large ? "text-sm" : ""}>全天</span>;
   }
   const [start, end] = rowKey.split("|");
   const startLabel = start?.slice(0, 5) || "";
   const endLabel = end?.slice(0, 5) || "";
   if (!startLabel || !endLabel) return null;
   return (
-    <span className={`whitespace-nowrap leading-tight ${large ? "text-sm" : "text-[12px]"}`}>
-      {startLabel}~{endLabel}
+    <span className={large ? "text-sm leading-tight" : "leading-tight"}>
+      {startLabel}
+      <br />
+      {endLabel}
     </span>
   );
 }
@@ -58,52 +59,21 @@ function GridCell({
 }) {
   const color = activityColor(slot.activity, slot.course);
 
-  if (expanded) {
-    return (
-      <button
-        type="button"
-        onClick={() => onEdit(slot)}
-        className="group w-full rounded-lg px-2 py-1.5 text-left transition active:scale-[0.98] active:bg-indigo-50/50"
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className="h-[1.25rem] w-1 shrink-0 rounded-full"
-            style={{ backgroundColor: color }}
-          />
-          <div className="min-w-0 flex-1">
-            <span className="block break-words font-medium text-slate-800">{slot.activity}</span>
-            {!slot.is_all_day && slot.location && (
-              <span className="mt-0.5 flex items-center gap-0.5 text-[11px] leading-snug text-slate-400">
-                <span className="opacity-70" aria-hidden>
-                  📍
-                </span>
-                <span className="break-words">{slot.location.name}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
       onClick={() => onEdit(slot)}
-      className="w-full px-0.5 py-0.5 text-left leading-tight active:opacity-70"
+      className="schedule-lesson-block w-full"
     >
-      <span className="inline-flex max-w-full items-center gap-1 text-xs leading-none text-slate-800">
-        <span
-          className="inline-block h-[1em] w-0.5 shrink-0 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-        <span className="min-w-0 flex-1 truncate font-medium">{slot.activity}</span>
-      </span>
-      {!slot.is_all_day && slot.location && (
-        <span className={`mt-0.5 block pl-1 text-[11px] leading-snug text-slate-400 truncate`}>
-          {slot.location.name}
-        </span>
-      )}
+      <span className="schedule-lesson-dot" style={{ backgroundColor: color }} />
+      <div className="schedule-lesson-body">
+        <div className={`schedule-lesson-title truncate${expanded ? " text-sm" : ""}`}>
+          {slot.activity}
+        </div>
+        {!slot.is_all_day && slot.location && (
+          <div className="schedule-lesson-location">{slot.location.name}</div>
+        )}
+      </div>
     </button>
   );
 }
@@ -120,12 +90,12 @@ function ScheduleGridTable({
   const timeRows = buildTimeRows(slots);
   const today = getTodayWeekday();
   const gridClass = expanded
-    ? "schedule-grid schedule-grid-expanded landscape-schedule-table text-sm"
-    : "schedule-grid schedule-grid-compact text-[11px]";
+    ? "schedule-grid schedule-grid-expanded landscape-schedule-table"
+    : "schedule-grid schedule-grid-compact";
 
-  const headTimeClass = `schedule-grid-cell schedule-grid-time schedule-grid-head text-center font-medium text-slate-400 ${expanded ? "text-sm" : "text-xs"}`;
-  const headDayClass = `schedule-grid-cell schedule-grid-head text-center font-medium text-slate-600 ${expanded ? "text-xs" : "text-[11px]"}`;
-  const bodyTimeClass = `schedule-grid-cell schedule-grid-time text-center text-slate-400 ${expanded ? "text-base" : "text-[12px]"}`;
+  const headTimeClass = "schedule-grid-cell schedule-grid-time schedule-grid-head";
+  const headDayClass = "schedule-grid-cell schedule-grid-head";
+  const bodyTimeClass = "schedule-grid-cell schedule-grid-time";
 
   return (
     <div className="schedule-grid-outer">
@@ -134,12 +104,12 @@ function ScheduleGridTable({
         style={{ gridTemplateRows: `auto repeat(${timeRows.length}, auto)` }}
       >
         <div className={headTimeClass} style={{ gridColumn: 1, gridRow: 1 }}>
-          {expanded ? "⏱ 时间" : "时间"}
+          时间
         </div>
         {WEEKDAYS.map((day, i) => (
           <div
             key={`head-${day.value}`}
-            className={`${headDayClass}${day.value === 6 ? " schedule-grid-day-last" : ""}${day.value === today ? " schedule-grid-today-cell schedule-grid-today-head" : ""}`}
+            className={`${headDayClass}${day.value === today ? " schedule-grid-today-head" : ""}`}
             style={{ gridColumn: i + 2, gridRow: 1 }}
           >
             {WEEKDAY_SHORT[i]}
@@ -164,16 +134,17 @@ function ScheduleGridTable({
                 const cellSlots = slots
                   .filter((s) => s.weekday === day.value && timeKey(s) === key)
                   .sort((a, b) => a.sort_order - b.sort_order);
+                const isToday = day.value === today;
                 return (
                   <div
                     key={`${key}-${day.value}`}
-                    className={`schedule-grid-cell py-0.5${day.value === 6 ? " schedule-grid-day-last" : ""}${day.value === today ? " schedule-grid-today-cell" : ""}`}
+                    className={`schedule-grid-cell${isToday ? " schedule-grid-today-cell" : ""}`}
                     style={{ gridColumn: dayIdx + 2, gridRow }}
                   >
                     {cellSlots.length === 0 ? (
-                      <span className="block py-2 text-center text-slate-200">·</span>
+                      <span className="schedule-empty-dot">·</span>
                     ) : (
-                      <div className={`divide-y ${GRID_BORDER.replace("border-", "divide-")}`}>
+                      <div className="flex w-full flex-col gap-1">
                         {cellSlots.map((s) => (
                           <GridCell key={s.id} slot={s} onEdit={onEdit} expanded={expanded} />
                         ))}
@@ -237,8 +208,8 @@ export function LandscapeScheduleOverlay({
   }, []);
 
   const content = (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="landscape-schedule-header flex shrink-0 items-center justify-between gap-3 px-5 py-3">
+    <div className="landscape-schedule-frame">
+      <header className="landscape-schedule-header flex shrink-0 items-center justify-between gap-3 rounded-2xl px-5 py-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-2 text-base font-semibold text-white">
             <span className="landscape-schedule-icon" aria-hidden>
@@ -257,12 +228,14 @@ export function LandscapeScheduleOverlay({
           ✕ 关闭
         </button>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto overscroll-y-auto p-3">
+      <div className="landscape-schedule-body">
         {slots.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-400">暂无课表</div>
         ) : (
-          <div className="landscape-schedule-panel overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-lg shadow-indigo-100/40">
-            <ScheduleGridTable slots={slots} onEdit={onEdit} expanded />
+          <div className="schedule-card landscape-schedule-panel overflow-hidden">
+            <div className="schedule-grid-scroll">
+              <ScheduleGridTable slots={slots} onEdit={onEdit} expanded />
+            </div>
           </div>
         )}
       </div>
@@ -271,7 +244,7 @@ export function LandscapeScheduleOverlay({
 
   return (
     <div className="landscape-schedule-shell">
-      <div className={portrait ? "landscape-schedule-rotated" : "h-full w-full"}>{content}</div>
+      <div className={portrait ? "landscape-schedule-rotated" : "h-full w-full min-h-0"}>{content}</div>
     </div>
   );
 }
@@ -289,12 +262,12 @@ export default function WeeklyScheduleGrid({
 }) {
   if (slots.length === 0) {
     return (
-      <div className="card overflow-hidden">
+      <div className="schedule-card">
         <div className="py-12 text-center text-sm text-slate-400">暂无课表，先添加时段</div>
         {onAdd && (
-          <div className="flex justify-end border-t border-slate-200 px-3 py-2">
-            <button type="button" onClick={onAdd} className="btn-primary shrink-0 px-3 py-1.5 text-xs">
-              + 添加时段
+          <div className="schedule-toolbar justify-end">
+            <button type="button" onClick={onAdd} className="schedule-btn-primary-dark">
+              <span>＋</span> 添加时段
             </button>
           </div>
         )}
@@ -303,25 +276,21 @@ export default function WeeklyScheduleGrid({
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div className="schedule-card">
       <div className="schedule-grid-scroll">
         <ScheduleGridTable slots={slots} onEdit={onEdit} />
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
+      <div className="schedule-toolbar">
         {onLandscapeOpen ? (
-          <button
-            type="button"
-            onClick={onLandscapeOpen}
-            className="btn-secondary shrink-0 px-2.5 py-1 text-xs"
-          >
-            🔄 横屏查看
+          <button type="button" onClick={onLandscapeOpen} className="schedule-btn-outline">
+            <span>🔄</span> 横屏查看
           </button>
         ) : (
           <span />
         )}
         {onAdd && (
-          <button type="button" onClick={onAdd} className="btn-primary shrink-0 px-3 py-1.5 text-xs">
-            + 添加时段
+          <button type="button" onClick={onAdd} className="schedule-btn-primary-dark">
+            <span>＋</span> 添加时段
           </button>
         )}
       </div>

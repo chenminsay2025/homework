@@ -1,7 +1,19 @@
 import type { Plan, ScheduleSlot } from "./types";
+import { normalizeAdminUserUsage } from "./types";
 
-const BASE = "/api";
+/** 开发默认 /api（Vite 代理）；APK 构建时设 VITE_API_BASE_URL=https://你的域名/api */
+const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "/api";
 const TOKEN_KEY = "homework_token";
+
+/** 将 /api/... 相对路径转为 APK 可访问的完整 URL */
+export function resolveMediaUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/") && BASE.startsWith("http")) {
+    const origin = BASE.replace(/\/api\/?$/, "");
+    return `${origin}${path}`;
+  }
+  return path;
+}
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -123,9 +135,17 @@ export const api = {
 
   adminGetStats: () => request<import("./types").AdminStats>("/admin/stats"),
   adminGetUsers: () => request<import("./types").AdminUser[]>("/admin/users"),
-  adminGetUser: (id: number) => request<import("./types").AdminUserDetail>(`/admin/users/${id}`),
+  adminGetUser: async (id: number) => {
+    const data = await request<import("./types").AdminUserDetail>(`/admin/users/${id}`);
+    return { ...data, usage: normalizeAdminUserUsage(data.usage) };
+  },
   adminUpdateUser: (id: number, data: { is_active?: boolean; role?: string; display_name?: string }) =>
     request<import("./types").AdminUser>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  adminResetUserPassword: (id: number, new_password: string) =>
+    request<{ ok: boolean }>(`/admin/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ new_password }),
+    }),
   adminGetPlans: () => request<import("./types").AdminPlan[]>("/admin/plans"),
   adminGetPlanDetail: (id: number) => request<import("./types").AdminPlanDetail>(`/admin/plans/${id}`),
   adminDeletePlan: (id: number) => request<{ ok: boolean }>(`/admin/plans/${id}`, { method: "DELETE" }),
@@ -317,7 +337,7 @@ export const api = {
   },
   fetchPlanFile: async (fileUrl: string) => {
     const token = getToken();
-    const res = await fetch(fileUrl, {
+    const res = await fetch(resolveMediaUrl(fileUrl), {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new Error("无法加载附件");

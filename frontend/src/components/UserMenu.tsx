@@ -55,17 +55,30 @@ export default function UserMenu({ mode }: UserMenuProps) {
               <p className="truncate text-xs text-slate-500">@{user.username}</p>
             </div>
             {mode === "admin" && (
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                onClick={() => {
-                  close();
-                  navigate("/");
-                }}
-              >
-                前往用户端
-              </button>
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    close();
+                    navigate("/admin/settings#admin-account");
+                  }}
+                >
+                  账号安全
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    close();
+                    navigate("/");
+                  }}
+                >
+                  前往用户端
+                </button>
+              </>
             )}
             <button
               type="button"

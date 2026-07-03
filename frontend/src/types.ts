@@ -44,6 +44,88 @@ export interface AdminUser extends User {
 
 export interface AdminUserDetail extends AdminUser {
   plans: Plan[];
+  usage: AdminUserUsage;
+}
+
+export interface AdminUserPlanUsage {
+  plan_id: number;
+  plan_name: string;
+  is_active: boolean;
+  created_at: string;
+  course_count: number;
+  location_count: number;
+  schedule_slot_count: number;
+  task_count: number;
+  active_task_count: number;
+  daily_entry_count: number;
+  daily_entry_completed: number;
+  slot_daily_plan_count: number;
+  slot_daily_plan_completed: number;
+  day_manual_item_count: number;
+  day_manual_item_completed: number;
+  attachment_count: number;
+  attachment_bytes: number;
+  schedule_exception_count: number;
+  last_activity_at: string | null;
+}
+
+export interface AdminUserUsage {
+  registered_days: number;
+  last_activity_at: string | null;
+  active_plan_count: number;
+  total_plan_count: number;
+  course_count: number;
+  location_count: number;
+  schedule_slot_count: number;
+  task_count: number;
+  active_task_count: number;
+  daily_entry_count: number;
+  daily_entry_completed: number;
+  slot_daily_plan_count: number;
+  slot_daily_plan_completed: number;
+  day_manual_item_count: number;
+  day_manual_item_completed: number;
+  attachment_count: number;
+  attachment_bytes: number;
+  schedule_exception_count: number;
+  deleted_record_count: number;
+  completion_rate: number;
+  plan_usages: AdminUserPlanUsage[];
+}
+
+export const EMPTY_ADMIN_USER_USAGE: AdminUserUsage = {
+  registered_days: 0,
+  last_activity_at: null,
+  active_plan_count: 0,
+  total_plan_count: 0,
+  course_count: 0,
+  location_count: 0,
+  schedule_slot_count: 0,
+  task_count: 0,
+  active_task_count: 0,
+  daily_entry_count: 0,
+  daily_entry_completed: 0,
+  slot_daily_plan_count: 0,
+  slot_daily_plan_completed: 0,
+  day_manual_item_count: 0,
+  day_manual_item_completed: 0,
+  attachment_count: 0,
+  attachment_bytes: 0,
+  schedule_exception_count: 0,
+  deleted_record_count: 0,
+  completion_rate: 0,
+  plan_usages: [],
+};
+
+export function normalizeAdminUserUsage(
+  usage: Partial<AdminUserUsage> | null | undefined,
+): AdminUserUsage {
+  if (!usage) return { ...EMPTY_ADMIN_USER_USAGE };
+  return {
+    ...EMPTY_ADMIN_USER_USAGE,
+    ...usage,
+    plan_usages: usage.plan_usages ?? [],
+  };
 }
 
 export interface AdminPlanDetail {

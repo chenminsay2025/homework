@@ -8,9 +8,14 @@
     "start": "vite --host 0.0.0.0",
     "dev:local": "dev.bat",
     "build": "tsc -b && vite build",
+    "build:mobile": "tsc -b && vite build",
+    "cap:sync": "cap sync android",
+    "cap:open": "cap open android",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
     "@js-preview/docx": "^1.6.4",
     "@js-preview/excel": "^1.7.14",
     "@js-preview/pdf": "^2.0.10",
@@ -19,6 +24,7 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.4.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
